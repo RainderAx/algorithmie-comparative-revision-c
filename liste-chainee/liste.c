@@ -1,22 +1,44 @@
-/* liste.c - definitions des fonctions du module liste chainee */
 #include <stdio.h>
 #include <stdlib.h>
 #include "liste.h"
 
+/* --- compteur d'allocations, interne au module --- */
+
+static int blocs = 0;
+
+static void *suivi_malloc(size_t taille)
+{
+    void *p = malloc(taille);
+    if (p != NULL) blocs++;
+    return p;
+}
+
+static void suivi_free(void *p)
+{
+    if (p != NULL) { blocs--; free(p); }
+}
+
+int liste_blocs_en_circulation(void)
+{
+    return blocs;
+}
+
 Maillon *liste_inserer(Maillon *tete, int valeur)
 {
-    Maillon *m = malloc(sizeof(Maillon));
-    if (m == NULL) { perror("malloc"); exit(EXIT_FAILURE); }
-    m->valeur = valeur;
-    m->suivant = tete; /* 1. il pointe l'ancienne tete */
-    return m; /* 2. il devient la nouvelle tete */
+    Maillon *nouveau = suivi_malloc(sizeof *nouveau);
+    if (nouveau == NULL) return tete;
+
+    nouveau->valeur = valeur;
+    nouveau->suivant = tete;
+    return nouveau;
 }
 
 int liste_longueur(const Maillon *tete)
 {
-    int n = 0;
-    for (const Maillon *m = tete; m != NULL; m = m->suivant) n++;
-    return n;
+    int longueur = 0;
+    for (const Maillon *m = tete; m != NULL; m = m->suivant)
+        longueur++;
+    return longueur;
 }
 
 bool liste_contient(const Maillon *tete, int valeur)
@@ -29,16 +51,15 @@ bool liste_contient(const Maillon *tete, int valeur)
 void liste_afficher(const Maillon *tete)
 {
     for (const Maillon *m = tete; m != NULL; m = m->suivant)
-        printf("%d -> ", m->valeur);
-    printf("NULL\n");
+        printf("%d ", m->valeur);
+    putchar('\n');
 }
 
 void liste_liberer(Maillon *tete)
 {
-    Maillon *m = tete;
-    while (m != NULL) {
-        Maillon *suiv = m->suivant; /* sauvegarder AVANT de liberer */
-        free(m);
-        m = suiv;
+    while (tete != NULL) {
+        Maillon *suivant = tete->suivant;
+        suivi_free(tete);
+        tete = suivant;
     }
 }
